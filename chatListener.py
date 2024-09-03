@@ -27,9 +27,7 @@ class ChatListener():
 
                 if not line:
                     continue
-                if line[line.find("[CHAT]") + 8] in ['|', ' ', "\\", '?']:
-                    continue
-                if "[CHAT]" in line:
+                if "[llm_read_this]" in line:
                     self.interactor.process_command(line)
 
 

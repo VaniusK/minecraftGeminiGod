@@ -10,22 +10,21 @@ class ChatInteractor:
         self.memory = dict()
         self.memory['messages'] = []
         self.memoryLength = 0
-        self.contextLength = 1000
+        self.contextLength = 4000
         self.gemini = GeminiBot()
 
     def tokenize(self, message):
         return len(message['role']) // 5 + 1 + len(message['content']) // 5 + 1
 
     def formatMessage(self, message):
-        if "[CHAT]" in message:
-            message = message.replace("\n", "")
-            message = message[message.find("[CHAT]") + 6:]
-        if 'internal error' in message:
-            message = "Помогите... Мне..."
-        return message
+        message = message[message.find("[llm_read_this]") + len("[llm_read_this]") + 1:]
+        print(message)
+        message_split = message.split(" ")
+        nick = message_split[0]
+        text = ' '.join(message_split[1:])
+        return nick, text
 
     def read_message(self, message, source):
-        message = self.formatMessage(message)
         entry = {}
         entry['role'] = source
         entry['content'] = message
@@ -36,6 +35,8 @@ class ChatInteractor:
             self.memory.pop(0)
 
     def send_message(self, message, source):
+        if 'internal error' in message:
+            message = "Помогите... Мне..."
         keyboard.press_and_release('t')
         time.sleep(0.1)
         buffer = pyperclip.paste()
@@ -44,6 +45,7 @@ class ChatInteractor:
         time.sleep(0.1)
         pyperclip.copy(buffer)
         keyboard.press_and_release('enter')
+        time.sleep(0.5)
 
     def split_text(self, text, block_size):
         blocks = []
@@ -58,12 +60,13 @@ class ChatInteractor:
             answer = self.gemini.generate_message(self.memory)
             self.read_message(answer, config.godName)
             answer_list = answer.split('@')
-            message_blocks = self.split_text(answer_list[0], 256)
-            for message_block in message_blocks:
-                self.send_message(message_block, config.godName)
+            message_list = answer_list[0].split('\\n')
+            for message in message_list:
+                message_blocks = self.split_text(message, 256)
+                for message_block in message_blocks:
+                    self.send_message(message_block, config.godName)
             for command in answer_list[1:]:
                 self.send_message("@" + command, config.godName)
         else:
-            nick = "[CHAT]  Hero VaniusKon"
-            #if not nick in command:
-            self.read_message(command, "Мир")
+            nick, message = self.formatMessage(command)
+            self.read_message(message, nick)
